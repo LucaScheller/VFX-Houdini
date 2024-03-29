@@ -1,29 +1,91 @@
-import hou
-import husd
 import json
+import os
 from dataclasses import dataclass
 
-from pxr import Sdf, Usd, UsdShade
+import hou
+import husd
 
 
-@dataclass
-class AssetItem:
-    color = ""
-    starred = False
-
-@dataclass
-class AssetItemColor():
+class ItemColor:
     blue = "blue"
     green = "green"
     purple = "purple"
     yellow = "yellow"
     teal = "teal"
     red = "red"
-        
+
+
+@dataclass
+class Item:
+    # Hierarchy
+    parent = ""
+    children = ""
+    # Data
+    label = ""
+    file_path = ""
+    thumbnail_file_path = ""
+    creation_date = 0
+    modification_date = 0
+    meta_data = {}
+    blind_data = b""
+    # UI
+    tags = []
+    color = ""
+    star = False
+
+
+class Model(object):
+    def __init__(self) -> None:
+        # Static
+        self.default_thumbnail_file_path = ""
+
+        # Items
+        self.items = {}
+        self.items_deleted = {}
+
+        # UI
+        self.tags = []
+
+    def get_data(self, item_id, role):
+        item = self.items.get(item_id)
+        data = getattr(item, role, None)
+        if role == 'thumbnail' and data is None:
+            thumbnail_file_path = getattr(item, 'thumbnail_file_path', None)
+            data = b''
+            if thumbnail_file_path and os.path.isfile(thumbnail_file_path):
+                with open(thumbnail_file_path, "r") as thumbnail_file:
+                    data = thumbnail_file.read()
+                setattr(item, 'thumbnail', data)
+
+        return data
+
+    def set_data(self, item_id, role, value):
+        item = self.items.get(item_id)
+        if not item:
+            return False
+        data = getattr(item, role, None)
+        if data == value:
+            return False
+        else:
+            setattr(item, role, value)
+            return True
+
+    def load(self):
+        pass
+
+    def save(self):
+        pass
+
 
 class AssetLibrary(husd.datasource.DataSource):
+    identifier = "AssetLibrary"
+
     def __init__(self, source_identifier, args=None):
-        pass
+        self.source_identifier = source_identifier
+        self.source_args = args
+
+        # Storage
+        self.model = Model()
 
     def isValid(self) -> bool:
         """The data source state.
@@ -37,19 +99,21 @@ class AssetLibrary(husd.datasource.DataSource):
         Returns:
             bool: Data source read only state.
         """
-        return False
+        return True
 
     def sourceIdentifier(self) -> str:
         """The source identifier string used to create this data source object.
         Returns:
             str: Data source identifier.
         """
+        return self.source_identifier
 
     def sourceArgs(self) -> str:
         """The args string used to create this data source object.
         Returns:
             str: Data source args string.
         """
+        return self.source_args
 
     def infoHtml(self) -> str:
         """Return a string in HTML format that will be
@@ -59,6 +123,7 @@ class AssetLibrary(husd.datasource.DataSource):
         Returns:
             str: A html parse-able string.
         """
+        return ""
 
     def saveAs(self, source_identifier) -> bool:
         """Create a copy of the data source, if supported.
@@ -183,6 +248,7 @@ class AssetLibrary(husd.datasource.DataSource):
         Returns:
             str: The file path.
         """
+        return self.model.get_data(item_id, "file_path")
 
     def setFilePath(self, item_id: str, file_path: str) -> bool:
         """Set the value of the filePath for this item.
@@ -194,7 +260,8 @@ class AssetLibrary(husd.datasource.DataSource):
         Returns:
             str: The success state.
         """
-
+        return self.model.set_data(item_id, "file_path")
+    
     def generateItemFilePath(self, item_id: str, file_ext: str) -> str:
         """Return a unique file path with an extension provided in file_ext.
         Args:
@@ -203,6 +270,7 @@ class AssetLibrary(husd.datasource.DataSource):
         Returns:
             str: The file path.
         """
+        return ""
 
     def createTag(self, tag: str) -> bool:
         """Create a tag in the data source, but do not assign it to any items.
@@ -242,6 +310,12 @@ class AssetLibrary(husd.datasource.DataSource):
         Returns:
             str: The success state.
         """
+        tags = self.model.get_data(item_id, "tags")
+        if tag not in tags:
+            self.model.set_data(item_id, "tags", tags + [tag])
+            return True
+        else:
+            return False
 
     def removeTag(self, item_id, tag) -> bool:
         """Removes a tag from a specific item.
@@ -254,6 +328,24 @@ class AssetLibrary(husd.datasource.DataSource):
         Returns:
             str: Data source args string.
         """
+        tags = self.model.get_data(item_id, "tags")
+        if tag in tags:
+            tags.remove(tag)
+            self.model.set_data(item_id, "tags", tags) # Technically not necessary.
+            return True
+        else:
+            return False
+
+    def tags(self, item_id: str) -> tuple[str]:
+        """Return a tuple of user defined tag
+        strings that have been assigned to this item.
+
+        Args:
+            item_id(str): The item id.
+        Returns:
+            tuple[str]: The tags.
+        """
+        return self.model.get_data(item_id, "tags")
 
     def status(self, item_id) -> str:
         """Return a string describing the current status of this item.
@@ -262,6 +354,7 @@ class AssetLibrary(husd.datasource.DataSource):
         Returns:
             str: The status.
         """
+        return ""
 
     def typeName(self, item_id) -> str:
         """Return the type of asset identified by the id.
@@ -272,6 +365,7 @@ class AssetLibrary(husd.datasource.DataSource):
         Returns:
             str: The type name.
         """
+        return "asset"
 
     def sourceTypeName(self, item_id: str | None = None) -> str:
         """Return the data source type of the asset identified by the id.
@@ -280,6 +374,7 @@ class AssetLibrary(husd.datasource.DataSource):
         Returns:
             str: The source type name.
         """
+        return self.identifier
 
     def label(self, item_id: str) -> str:
         """Return the user-facing string that identifies and describes the item.
@@ -288,6 +383,7 @@ class AssetLibrary(husd.datasource.DataSource):
         Returns:
             str: The label.
         """
+        return self.model.get_data(item_id, "label")
 
     def setLabel(self, item_id: str, label: str) -> bool:
         """Return the user-facing string that identifies and describes the item.
@@ -295,8 +391,9 @@ class AssetLibrary(husd.datasource.DataSource):
             item_id(str): The item id.
             label(str): The label to set.
         Returns:
-            str: The label.
+            bool: The value changed state.
         """
+        return self.model.set_data(item_id, "label", label)
 
     def thumbnail(self, item_id: str) -> bytes:
         """Return the raw data for a thumbnail image that represents the item.
@@ -305,6 +402,7 @@ class AssetLibrary(husd.datasource.DataSource):
         Returns:
             str: The thumbnail file path.
         """
+        return self.model.get_data(item_id, "thumbnail")
 
     def setThumbnail(self, item_id: str, thumbnail: str) -> bool:
         """Return the raw data for a thumbnail image that represents the item.
@@ -328,13 +426,14 @@ class AssetLibrary(husd.datasource.DataSource):
 
     def setOwnsFile(self, item_id: str, owns_file: bool) -> bool:
         """Return True if the filePath for this item is a file on disk
-        that should be deleted if the item is deleted. 
+        that should be deleted if the item is deleted.
         Args:
             item_id(str): The item id.
             owns_file(bool): The ownership state.
         Returns:
             bool: The value changed state.
         """
+        return False
 
     def creationDate(self, item_id: str) -> int:
         """Return a long integer representing the unix timestamp
@@ -345,6 +444,7 @@ class AssetLibrary(husd.datasource.DataSource):
         Returns:
             str: The creation time.
         """
+        return self.model.get_data(item_id, "creation_date")
 
     def modificationDate(self, item_id: str) -> int:
         """Return a long integer representing the unix timestamp
@@ -355,6 +455,7 @@ class AssetLibrary(husd.datasource.DataSource):
         Returns:
             str: The modification time.
         """
+        return self.model.get_data(item_id, "modification_date")
 
     def setModificationDate(self, item_id: str, timestamp: str) -> bool:
         """Set the value of the modificationDate for this item.
@@ -366,6 +467,7 @@ class AssetLibrary(husd.datasource.DataSource):
         Returns:
             bool: The value changed state.
         """
+        return self.model.set_data(item_id, "modification_date", timestamp)
 
     def isStarred(self, item_id: str) -> bool:
         """Return True if this item has been marked as a “favorite” by the user.
@@ -375,19 +477,21 @@ class AssetLibrary(husd.datasource.DataSource):
         Returns:
             bool: The state.
         """
+        return self.model.get_data(item_id, "star")
 
     def setIsStarred(self, item_id: str, isstarred: bool) -> bool:
-       """Set the value of the isStarred flag for this item.
-       Return True if this call resulted in a change to this value.
+        """Set the value of the isStarred flag for this item.
+        Return True if this call resulted in a change to this value.
 
-        Args:
-            item_id(str): The item id.
-            isStarred(bool): The state.
-        Returns:
-            bool: The value changed state.
+         Args:
+             item_id(str): The item id.
+             isStarred(bool): The state.
+         Returns:
+             bool: The value changed state.
         """
+        return self.model.set_data(item_id, "star", isstarred)
 
-    def colorTag(item_id) -> str:
+    def colorTag(self, item_id) -> str:
         """Return a string indicating a special color tag value that has been assigned by the user.
         These color strings are displayed as colored bars in the gallery browser UI.
         Supported values are blue, green, purple, yellow, teal, and red.
@@ -397,17 +501,19 @@ class AssetLibrary(husd.datasource.DataSource):
         Returns:
             str: The color.
         """
+        return self.model.get_data(item_id, "color")
 
     def setColorTag(self, item_id: str, color_tag: str) -> bool:
         """Set the value of the colorTag for this item.
         Return True if this call resulted in a change to this value.
-        
+
         Args:
             item_id(str): The item id.
             color_tag(str): The color tag.
         Returns:
             bool: The value changed state.
         """
+        return self.model.set_data(item_id, "color", color_tag)
 
     def metadata(self, item_id: str) -> dict:
         """Return a dictionary of metadata that has been associated
@@ -418,8 +524,9 @@ class AssetLibrary(husd.datasource.DataSource):
         Args:
             item_id(str): The item id.
         Returns:
-            dict: The metadata dict.
+            dict: The meta_data dict.
         """
+        return self.model.get_data(item_id, "meta_data")
 
     def setMetadata(self, item_id: str, metadata: dict) -> bool:
         """Set the value of the metadata dictionary for
@@ -431,6 +538,7 @@ class AssetLibrary(husd.datasource.DataSource):
         Returns:
             bool: The value changed state.
         """
+        return self.model.set_data(item_id, "meta_data", metadata)
 
     def blindData(self, item_id: str) -> bytes:
         """Return a block of data source implementation specific
@@ -438,6 +546,7 @@ class AssetLibrary(husd.datasource.DataSource):
         Returns:
             bytes: The binary data.
         """
+        return self.model.get_data(item_id, "blind_data")
 
     def setBlindData(self, item_id: str, data: bytes) -> bool:
         """Set the value of the blindData for this item.
@@ -447,6 +556,7 @@ class AssetLibrary(husd.datasource.DataSource):
         Returns:
             bool: The value changed state.
         """
+        return self.model.set_data(item_id, "blind_data", data)
 
 
 def registerDataSources(manager):
