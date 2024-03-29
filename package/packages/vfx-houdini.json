@@ -1,0 +1,6 @@
+{
+    "load_package_once": true,
+    "hpath" : [
+        "$REPO_ROOT/package"
+    ]
+}
