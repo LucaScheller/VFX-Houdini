@@ -6,7 +6,7 @@ then
     # Houdini Packages
     export HOUDINI_PACKAGE_DIR=$REPO_ROOT/package/packages
     
-    # Source Houdini (This defines what Houdini version to compile against)
+    # Source Houdini
     pushd /opt/hfs20.0 > /dev/null
     source houdini_setup
     popd > /dev/null
