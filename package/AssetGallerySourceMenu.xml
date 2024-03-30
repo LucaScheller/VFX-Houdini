@@ -4,7 +4,7 @@
     <scriptItem id="vfx.houdini.assetlibrary.mock">
       <label>Spawn Asset Library Mock Data From Environment Variable...</label>
       <scriptCode><![CDATA[
-        hou.ui.setSharedLayoutDataSource(hou.AssetGalleryDataSource("__mock__.env", ""))
+        hou.ui.setSharedAssetGalleryDataSource(hou.AssetGalleryDataSource("__mock__.env", ""), gallery_name='layout')
       ]]></scriptCode>
     </scriptItem>
   </menu>
