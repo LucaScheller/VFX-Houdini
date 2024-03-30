@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<pythonPanelDocument>
+  <!-- This file contains definitions of Python interfaces and the
+ interfaces menu.  It should not be hand-edited when it is being
+ used by the application.  Note, that two definitions of the
+ same interface or of the interfaces menu are not allowed
+ in a single file. -->
+  <interface name="LopLayoutPanel" label="Layout Panel (Custom)" icon="MISC_python" showNetworkNavigationBar="true" help_url="">
+    <script><![CDATA[from vfxHoudini.ui.panels import LopLayout
+
+panel = None
+
+def onCreateInterface():
+    global panel
+    panel = LopLayout.LopLayoutPanel()
+    return panel
+
+def onActivateInterface():
+    global panel
+    panel.onActivate(kwargs)
+
+def onDeactivateInterface():
+    global panel
+    panel.onDeactivate()
+
+def onDestroyInterface():
+    global panel
+    panel.onDestroy()
+    panel = None
+
+def onNodePathChanged(node):
+    global panel
+    panel.onNodePathChanged(node)
+
+]]></script>
+    <showInParametersPane optype="Lop/layout"/>
+    <help><![CDATA[]]></help>
+  </interface>
+</pythonPanelDocument>

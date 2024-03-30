@@ -4,5 +4,12 @@
 			"path": ".",
 		}
 	],
-	"settings": {}
+	"settings": {
+		"files.exclude": {
+			"**/__pycache__": true
+		},
+		"python.analysis.extraPaths": ["/opt/hfs20.0/houdini/python3.10libs",
+								       "/mnt/data/PROJECT/VFX-DCC/VFX-Houdini/package/scripts/python"]
+	}
+	
 }

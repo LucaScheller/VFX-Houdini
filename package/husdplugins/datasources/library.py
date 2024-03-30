@@ -8,6 +8,7 @@ from typing import Any
 import hou
 import husd
 
+from vfxHoudini.api.constants import EnvVar
 
 class ItemColor:
     blue = "blue"
@@ -157,6 +158,7 @@ class Model(object):
         self.items[item.id] = item
         for tag in item.tags:
             self.add_tag(tag)
+        self.items_updated.add(item.id)
 
     def get_data(self, item_id: str, role: Any):
         """Get data with the given role from the item.
@@ -205,7 +207,7 @@ class Model(object):
         """
         if not identifier:
             identifier = self.identifier
-        if identifier == "__mock__.env":
+        if identifier == EnvVar.asset_library_datasource + ".env":
             populate_mock_data(self)
         else:
             env_name = identifier.replace(".env", "")
@@ -216,7 +218,7 @@ class Model(object):
             self.identifier = data["identifier"]
             self.tags = data["tags"]
             for item_id, item_data in data["items"].items():
-                self.items[item_id] = Item(item_id, **item_data)
+                self.items[item_id] = Item(**item_data)
 
     def save(self, identifier: str=None):
         """Save the model to its identifier."""
@@ -243,7 +245,7 @@ def populate_mock_data(model: Model):
     for idx in range(10):
         item_creation_date = time.mktime(datetime.datetime.now().timetuple())
         item = Item(
-            f"id_{idx}",
+            id=f"id_{idx}",
             label=f"Item Label {idx}",
             file_path=f"/some/path/{idx}.usd",
             thumbnail_file_path=f"/some/path/{idx}.png",
@@ -436,33 +438,41 @@ class AssetLibrary(husd.datasource.DataSource):
     
     def addItem(
         self,
+        type_name: str,
         label: str,
-        file_path: str = None,
-        thumbnail: str = b"",
-        type_name: str = "asset",
-        blind_data: str = b"",
-        creation_date: int = 0,
+        file_path: str,
+        thumbnail: bytes,
+        creation_date: int,
+        blind_data: bytes,
+        undocumented_data: Any,
     ) -> str:
         """Add an item to the data source.
+        As this interface method if limiting to what data it can inject,
+        we inject everything from the blind data, which is
+        expected to carry a json dict representation of an item.
+        # TODO The interface is broken from SideFX, so the args/kwargs mapping is invalid.
+
         Args:
             label(str): The label.
             file_path(str): The file path.
             thumbnail(str): The thumbnail file path.
             type_name(str): The thumbnail file path.
             blind_data(str): The blind data.
-            creation_data(int): The creation date.
+            creation_date(int): The creation date.
+            undocumented_data(Any): Undefined data.
         Returns:
             str: The item identifier.
         """
-        item = Item(
-            id=file_path,
-            label=label,
-            file_path=file_path,
-            thumbnail_file_content=thumbnail,
-            blind_data=blind_data,
-            creation_date=creation_date
-        )
-        self.model.add_item(item)
+        try:
+            item_data = json.loads(blind_data)
+        except:
+            item_data = None
+            print("Failed to parse item data from {}".format(blind_data))
+        if item_data:
+            item = Item(
+                **item_data
+            )
+            self.model.add_item(item)
 
     def filePath(self, item_id: str) -> str:
         """Return a string that can be used to access
