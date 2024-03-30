@@ -207,13 +207,12 @@ class Model(object):
             identifier = self.identifier
         if identifier == "__mock__.env":
             populate_mock_data(self)
-            self.save("MOCK.env")
         else:
             env_name = identifier.replace(".env", "")
             data = hou.getenv(env_name, "")
             if not data:
                 return
-            data = json.loads(data)
+            data = json.loads(data).replace('|||', '"')
             self.identifier = data["identifier"]
             self.tags = data["tags"]
             for item_id, item_data in data["items"].items():
@@ -231,7 +230,7 @@ class Model(object):
             item_data = {k:v for k,v in item_data.items()}
             item_data.pop('thumbnail_file_content')
             data["items"][item.id] = item_data
-        data = json.dumps(data)
+        data = json.dumps(data).replace('"', '|||')
         hou.hscript('setenv {env_name}="{data}"'.format(env_name=env_name,
                                                         data=data))
 
