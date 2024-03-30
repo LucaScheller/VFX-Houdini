@@ -1,7 +1,10 @@
 {
 	"folders": [
 		{
-			"path": "."
+			"path": ".",
+		},
+		{
+			"path": "/opt/hfs20.0/houdini",
 		}
 	],
 	"settings": {}
