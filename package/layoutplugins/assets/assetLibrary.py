@@ -135,8 +135,6 @@ def placementAssetLibraryHandler(
     data: bytestring encoding a dictionary holding the primpath for the specific
           primitive being referenced from the file.
     """
-
-
     name = asset_info['label']
     data = asset_info['data']
     data_dict = json.loads(data.decode()) if data else {}
@@ -185,12 +183,26 @@ def updateAssetLibraryAssetHandler(container: hou.Node,
     node = container.node(hou.text.variableName(ident))
     if node is None:
         raise ValueError("No node found for identifier: " + ident)
-    # TODO Implement identifier update
+    # Notes: SideFX maps ident to be the item label here.
+    # This method is not tested, not sure where this actually gets called.
+    data_source = hou.ui.sharedAssetGalleryDataSource('layout')
+    blind_data = None
+    for item_id in data_source.itemIds():
+        if item_id == data_source.label(item_id):
+            blind_data = json.loads(data_source.blindData(item_id))
+            break
+    if not blind_data:
+        return
+    data_source = hou.ui.sharedAssetGalleryDataSource('layout')
+    node.parm("filepath").set(blind_data["layer_identifier"])
     node.parm("reload").pressButton()
 
 
 def reloadAssetLibraryHandler(container: hou.Node, ident: str) -> None:
-    ref_node = container.node(hou.text.variableName(ident))
+    # Notes: SideFX maps ident to be the item id here.
+    data_source = hou.ui.sharedAssetGalleryDataSource('layout')
+    item_label = data_source.label(ident)
+    ref_node = container.node(hou.text.variableName(item_label))
     if ref_node is None:
         raise ValueError("No node found for identifier: {} in {}".format(ident, container))
     ref_node.parm("reload").pressButton()
