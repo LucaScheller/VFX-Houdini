@@ -47,11 +47,15 @@ class AssetLibraryDropField(QtWidgets.QPushButton):
                         data = []
                     url_data.extend(data)
 
-        # TODO Remove in production
+        # TODO Mock Data, remove in production
+        item_blind_data = json.dumps({
+            "prim_path": "/pig",
+            "layer_identifier": "/opt/hfs20.0/houdini/usd/assets/pig/pig.usd",
+            "variants": {"geo": "easy"}
+        })
         url_data = [
             {
-                "id": "id_9",
-                "label": "Item Label 9",
+                "id": "id_9", # Existing item
             }, 
             {
                 "id": "id_10",
@@ -63,7 +67,8 @@ class AssetLibraryDropField(QtWidgets.QPushButton):
                 "meta_data": {"keyA": "valueA", "keyB": "valueB"},
                 "tags": ["Tag 0", f"Item Tag 10"],
                 "color": "yellow",
-                "star": 0
+                "star": 0,
+                "blind_data": item_blind_data
             }
         ]
 

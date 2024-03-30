@@ -8,7 +8,7 @@ from typing import Any
 import hou
 import husd
 
-from vfxHoudini.api.constants import EnvVar
+from vfxHoudini.api.constants import EnvVar, DataSourceTypes
 
 class ItemColor:
     blue = "blue"
@@ -33,11 +33,18 @@ class Item:
     creation_date: int = 0
     modification_date: int = 0
     meta_data: dict = field(default_factory = lambda: ({}))
-    blind_data: str = ""
+    blind_data: str = "" # SideFX expects this to be a byte str, but we store str. Via the AssetLibraryblindData method we cast it to bytes.
     # UI
     tags: list[str] = field(default_factory = lambda: ([]))
     color: str = ""
     star: bool = False
+
+
+@dataclass
+class ItemBlindDataUSD:
+    prim_path: str
+    layer_identifier: str
+    variants: dict = field(default_factory = lambda: ({}))
 
 
 class Model(object):
@@ -243,7 +250,11 @@ def populate_mock_data(model: Model):
         self.add_tag(f"Tag {idx}")
     item_colors = [ItemColor.red, ItemColor.green, ItemColor.blue]
     for idx in range(10):
+        item_usd_data = ItemBlindDataUSD("/pig", "/opt/hfs20.0/houdini/usd/assets/pig/pig.usd")
         item_creation_date = time.mktime(datetime.datetime.now().timetuple())
+        item_blind_data = json.dumps({
+            k: v for k, v in item_usd_data.__dict__.items()
+        })
         item = Item(
             id=f"id_{idx}",
             label=f"Item Label {idx}",
@@ -254,7 +265,8 @@ def populate_mock_data(model: Model):
             meta_data={"keyA": "valueA", "keyB": "valueB"},
             tags=["Tag 0", f"Item Tag {idx}"],
             color=item_colors[idx % 3],
-            star=idx % 3 == 0
+            star=idx % 3 == 0,
+            blind_data=item_blind_data
         )
         self.add_item(item)
 
@@ -614,7 +626,7 @@ class AssetLibrary(husd.datasource.DataSource):
         Returns:
             str: The source type name.
         """
-        return self.identifier
+        return DataSourceTypes.asset_library_source
 
     def label(self, item_id: str) -> str:
         """Return the user-facing string that identifies and describes the item.
@@ -787,7 +799,7 @@ class AssetLibrary(husd.datasource.DataSource):
         Returns:
             bytes: The binary data.
         """
-        return self.model.get_data(item_id, "blind_data")
+        return self.model.get_data(item_id, "blind_data").encode('ascii')
 
     def setBlindData(self, item_id: str, data: bytes) -> bool:
         """Set the value of the blindData for this item.
